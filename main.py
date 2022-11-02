@@ -94,7 +94,7 @@ def get_points(dir, extension):
         if not ext == extension:
             continue
 
-        file = open(os.path.join(train_dir, file)) ## Open the file
+        file = open(os.path.join(dir, file)) ## Open the file
         file = json.load(file) ## Load the json and save as file
         
         label = file["shapes"][0]["points"][0] ## Get the label from the json
@@ -110,6 +110,8 @@ print (len(training_point_data))
 if len(training_image_data) != len(training_point_data):
     print ("Images don't match, point count, quitting!")
     quit()
+
+validation_point_data = get_points(validation_dir, ".json")
 
 model = tf.keras.models.Sequential([
     tf.keras.layers.Conv2D(32, (3,3), activation='relu', input_shape=(IMG_WIDTH, IMG_HEIGHT, IMG_DEPTH)),
@@ -133,14 +135,12 @@ model.compile(optimizer='adam',
               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
               metrics=['accuracy'])
 
-quit()
 
 EPOCHS = 14
-history = model.fit_generator(
-    x=training_image_data,
-    y=training_point_data,
+history = model.fit(
+    (training_image_data, training_point_data),
     steps_per_epoch=int(np.ceil(len(training_image_data) / float(BATCH_SIZE))),
     epochs=EPOCHS,
-    validation_data=val_data_gen,
-    validation_steps=int(np.ceil(11 / float(BATCH_SIZE)))
+    validation_data=validation_point_data,
+    validation_steps=int(np.ceil(len(validation_point_data) / float(BATCH_SIZE)))
 )
