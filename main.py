@@ -39,8 +39,7 @@ for file in os.listdir(validation_dir):
 print ("Total testing image count: " + str(validation_image_count))
 
 
-## Get all labels from the images
-
+## Get all labels from the images and count training point
 def get_labels(dir, extension):
     train_labels = set() ## Using a set to make sure not duplicates are added
     for file in os.listdir(dir):
@@ -48,6 +47,7 @@ def get_labels(dir, extension):
         if ext == extension:
             file = open(os.path.join(train_dir, file)) ## Open the file
             file = json.load(file) ## Load the json and save as file
+            
             label = file["shapes"][0]["label"] ## Get the label from the json
             train_labels.add(label) ## Add the label to the set
 
@@ -64,11 +64,83 @@ IMG_DEPTH = 3
 
 BATCH_SIZE = 5# Number of training examples to process before updating our models variables
 
+## Prepare all images for training
+
 def convert_img_to_array(image_file):
     img = tf.keras.preprocessing.image.load_img(image_file)
-
     image_array = tf.keras.preprocessing.image.img_to_array(img)
-    print(image_array.shape)
-    print(image_array)
+    return image_array
 
-convert_img_to_array(os.path.join(train_dir, "IMG_010.jpg"))
+def convert_all_images_to_one_array(dir, extension):
+    ##array = np.empty(shape=training_image_count, dtype=np.array)
+    array = []
+    for file in os.listdir(dir):
+        name, ext = os.path.splitext(file) ## split the file in a name and extension
+        if not ext == extension:
+            continue
+        img_array = convert_img_to_array(os.path.join(dir, file))
+        array.append(img_array)
+
+    print ("Conversion of images in " + str(dir) + " succesfull")
+    return array
+        
+training_image_data = convert_all_images_to_one_array(train_dir, ".jpg")
+
+## Prepare all points for training
+def get_points(dir, extension):
+    array = []
+    for file in os.listdir(dir):
+        name, ext = os.path.splitext(file) ## split the file in a name and extension
+        if not ext == extension:
+            continue
+
+        file = open(os.path.join(train_dir, file)) ## Open the file
+        file = json.load(file) ## Load the json and save as file
+        
+        label = file["shapes"][0]["points"][0] ## Get the label from the json
+        array.append(label)
+
+    return array
+
+training_point_data = get_points(train_dir, ".json")
+
+print (len(training_image_data))
+print (len(training_point_data))
+
+if len(training_image_data) != len(training_point_data):
+    print ("Images don't match, point count, quitting!")
+    quit()
+
+model = tf.keras.models.Sequential([
+    tf.keras.layers.Conv2D(32, (3,3), activation='relu', input_shape=(IMG_WIDTH, IMG_HEIGHT, IMG_DEPTH)),
+    tf.keras.layers.MaxPooling2D(2, 2),
+
+    tf.keras.layers.Conv2D(64, (3,3), activation='relu'),
+    tf.keras.layers.MaxPooling2D(2,2),
+    
+    tf.keras.layers.Conv2D(128, (3,3), activation='relu'),
+    tf.keras.layers.MaxPooling2D(2,2),
+    
+    tf.keras.layers.Conv2D(128, (3,3), activation='relu'),
+    tf.keras.layers.MaxPooling2D(2,2),
+    
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dense(512, activation='relu'),
+    tf.keras.layers.Dense(4)
+])
+
+model.compile(optimizer='adam',
+              loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
+              metrics=['accuracy'])
+
+quit()
+
+EPOCHS = 14
+history = model.fit_generator(
+    x=training_image_data,
+    y=training_point_data,
+    steps_per_epoch=int(np.ceil(len(training_image_data) / float(BATCH_SIZE))),
+    epochs=EPOCHS,
+    validation_data=val_data_gen,
+    validation_steps=int(np.ceil(11 / float(BATCH_SIZE)))
+)
