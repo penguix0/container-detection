@@ -24,8 +24,9 @@ dataset_dir = pathlib.Path(data_path)
 image_count = len(list(dataset_dir.glob('*/*.jpg')))
 print ("Total image count: " + str(image_count))
 
-training_image_count = len(list(dataset_dir.glob('training/*.jpg')))
+training_image_count = len(list(dataset_dir.glob('training/*.json')))
 print ("Total training image count: " + str(training_image_count))
 
-testing_image_count = len(list(dataset_dir.glob('testing/*.jpg')))
+testing_image_count = len(list(dataset_dir.glob('testing/*.json')))
 print ("Total testing image count: " + str(testing_image_count))
+
