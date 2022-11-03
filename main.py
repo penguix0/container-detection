@@ -1,4 +1,5 @@
 ## Import libaries
+from tkinter import N
 import tensorflow as tf
 
 
@@ -72,7 +73,7 @@ def convert_img_to_array(image_file):
     return image_array
 
 def convert_all_images_to_one_array(dir, extension):
-    ##array = np.empty(shape=training_image_count, dtype=np.array)
+    ##array = np.array([])
     array = []
     for file in os.listdir(dir):
         name, ext = os.path.splitext(file) ## split the file in a name and extension
@@ -80,11 +81,26 @@ def convert_all_images_to_one_array(dir, extension):
             continue
         img_array = convert_img_to_array(os.path.join(dir, file))
         array.append(img_array)
+        ##np.concatenate(array, img_array)
 
     print ("Conversion of images in " + str(dir) + " succesfull")
     return array
         
-training_image_data = convert_all_images_to_one_array(train_dir, ".jpg")
+##training_image_data = convert_all_images_to_one_array(train_dir, ".jpg")
+training_image_data = tf.keras.utils.image_dataset_from_directory(
+    directory=train_dir,
+    labels=None,
+    class_names=None,
+    color_mode="rgb",
+    batch_size=BATCH_SIZE,
+    image_size=(IMG_HEIGHT, IMG_WIDTH), ##Width and height are flipped for some strange reason
+    shuffle=True
+)
+
+# for batch in training_image_data:
+#     print (batch.shape)
+#     for image in batch:
+#         print (image.shape)
 
 ## Prepare all points for training
 def get_points(dir, extension):
@@ -97,7 +113,7 @@ def get_points(dir, extension):
         file = open(os.path.join(dir, file)) ## Open the file
         file = json.load(file) ## Load the json and save as file
         
-        label = file["shapes"][0]["points"][0] ## Get the label from the json
+        label = file["shapes"][0]["points"] ## Get the label from the json
         array.append(label)
 
     return array
@@ -107,9 +123,19 @@ training_point_data = get_points(train_dir, ".json")
 print (len(training_image_data))
 print (len(training_point_data))
 
-if len(training_image_data) != len(training_point_data):
-    print ("Images don't match, point count, quitting!")
-    quit()
+# if len(training_image_data) != len(training_point_data):
+#     print ("Images don't match, point count, quitting!")
+#     quit()
+
+validation_image_data = tf.keras.utils.image_dataset_from_directory(
+    directory=validation_dir,
+    labels=None,
+    class_names=None,
+    color_mode="rgb",
+    batch_size=BATCH_SIZE,
+    image_size=(IMG_HEIGHT, IMG_WIDTH), ##Width and height are flipped for some strange reason
+    shuffle=True
+)
 
 validation_point_data = get_points(validation_dir, ".json")
 
@@ -135,12 +161,12 @@ model.compile(optimizer='adam',
               loss=tf.keras.losses.SparseCategoricalCrossentropy(from_logits=True),
               metrics=['accuracy'])
 
-
 EPOCHS = 14
 history = model.fit(
-    (training_image_data, training_point_data),
+    x=training_image_data,
+    y=training_point_data,
     steps_per_epoch=int(np.ceil(len(training_image_data) / float(BATCH_SIZE))),
     epochs=EPOCHS,
-    validation_data=validation_point_data,
-    validation_steps=int(np.ceil(len(validation_point_data) / float(BATCH_SIZE)))
+    ##validation_split=0.2
+    validation_data=(validation_image_data),
 )
