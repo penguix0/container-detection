@@ -51,66 +51,64 @@ class ContainerDataset(tfds.core.GeneratorBasedBuilder):
   def _split_generators(self, dl_manager: tfds.download.DownloadManager):
     """Returns SplitGenerators."""
     # TODO(container_dataset): Downloads the data and defines the splits
-    path = dl_manager.download_and_extract('https://github.com/penguix0/container-detection-dataset/archive/refs/heads/main.zip')
-
+    path = dl_manager.extract(dl_manager.download('https://github.com/penguix0/container-detection-dataset/archive/refs/heads/main.zip'))
     # TODO(container_dataset): Returns the Dict[split names, Iterator[Key, Example]]
     return {
-        'train': self._generate_examples(path / 'training'),
-        'test': self._generate_examples(path / 'testing')
+        'train': self._generate_examples(path / 'container-detection-dataset-main' / 'training'),
+        'test': self._generate_examples(path / 'container-detection-dataset-main' / 'testing')
     }
 
   def _generate_examples(self, path):
     """Yields examples."""
+    print (path)
     # TODO(container_dataset): Yields (key, example) tuples from the dataset
-    for i, (img, json) in enumerate(path.glob('*.jpg'), path.glob('*.json')):
-      yield i,{
-        'image': img,
-        'objects': self._get_objects(path)
+    for file in path.glob("*.jpg"):
+      json_path = os.path.join(path,(os.path.splitext(file.name)[0]+".json"))
+      yield list(path.glob("*.jpg")).index(file.name),{
+        'image': file,
+        'objects': self._get_objects(json_path)
       }
 
-  def _get_objects(self, path, extension):
+  def _get_objects(self, json_path):
     """"Returns the json content of each image as an array"""
     data = dict()
-    points = self._get_points(path, extension)
-    label = self._get_labels(path, extension)
+    points = self._get_points(json_path)
+    label = self._get_labels(json_path)
 
     data["points"] = points
     data["label"] = label
 
     return data
 
-  def _get_labels(self, path, extension):
+  def _get_labels(self, path):
     """Returns all labels"""
     train_labels = []
-    for file in os.listdir(path):
-        name, ext = os.path.splitext(file) ## split the file in a name and extension
-        if ext == extension:
-            file = open(os.path.join(path, file)) ## Open the file
-            file = json.load(file) ## Load the json and save as file
-            
-            label = file["shapes"][0]["label"] ## Get the label from the json
-            train_labels.append(label) ## Add the label to the set
 
-            file.close()
+    file = open(path) ## Open the file
+    file = json.load(file) ## Load the json and save as file
+    
+    for shape in file["shapes"]:
+      label = shape["label"] ## Get the label from the json
+      train_labels.append(label) ## Add the label to the set
+
+    file.close()
 
     return train_labels
 
-  def _get_points(self, path, extension):
+  def _get_points(self, path):
     """Returns all polygon points"""
+
     array = []
-    for file in os.listdir(path):
-        name, ext = os.path.splitext(file) ## split the file in a name and extension
-        if not ext == extension:
-            continue
 
-        file = open(os.path.join(path, file)) ## Open the file
-        file = json.load(file) ## Load the json and save as file
-        
-        points = file["shapes"][0]["points"] ## Get the label from the json
-        points = tfds.features.Tensor(points, shape=(None, 2), dtype=tf.float32)
-        array.append(points)
+    file = open(os.path.join(path, file)) ## Open the file
+    file = json.load(file) ## Load the json and save as file
+    
+    for shape in file["shapes"]:
+      points = shape["points"] ## Get the label from the json
+      points = tfds.features.Tensor(points, shape=(None, 2), dtype=tf.float32)
+      array.append(points)
 
-        file.close()
+    file.close()
 
     return array
 

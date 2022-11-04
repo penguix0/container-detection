@@ -1,3 +1,1 @@
-# TODO(container_dataset): If your dataset downloads files, then the checksums
-# will be automatically added here when running
-# `tfds build --register_checksums`.
+https://github.com/penguix0/container-detection-dataset/archive/refs/heads/main.zip	944616	97c27177eb04a08279df3186a5e2ad6f33a817777bcdfac7fd63195ef53796eb	container-detection-dataset-main.zip
