@@ -2,7 +2,7 @@
 import tensorflow_datasets as tfds
 import tensorflow as tf
 import json
-import os
+import numpy as np
 
 # TODO(container_dataset): Markdown description  that will appear on the catalog page.
 _DESCRIPTION = """
@@ -21,11 +21,12 @@ class ContainerDataset(tfds.core.GeneratorBasedBuilder):
   RELEASE_NOTES = {
       '1.0.0': 'Initial release.',
   }
-  IMG_HEIGHT = 100 # pixels
-  IMG_WIDTH = 100 # pixels
+
 
   def _info(self) -> tfds.core.DatasetInfo:
-    """Returns the dataset metadata."""
+    """Returns the dataset metadata."""  
+    IMG_HEIGHT = 100 # pixels
+    IMG_WIDTH = 100 # pixels
     # TODO(container_dataset): Specifies the tfds.core.DatasetInfo object
     return tfds.core.DatasetInfo(
         builder=self,
@@ -33,11 +34,11 @@ class ContainerDataset(tfds.core.GeneratorBasedBuilder):
         features=tfds.features.FeaturesDict({
             # These are the features of your dataset like images, labels ...
             ## shape=(height, width, num. of channels)
-            'image': tfds.features.Image(shape=(None, None, 3)),
+            'image': tfds.features.Image(shape=(IMG_HEIGHT, IMG_WIDTH, 3)),
             'objects': tfds.features.Sequence({
-                'label': tfds.features.ClassLabel(names=['container_fron']),
+                'label': tfds.features.ClassLabel(names=['container_front']),
                 ## shape=(number points in polygon, 2--> x and y value)
-                'points': tfds.features.Tensor(shape=(None, 2), dtype=tf.float32),
+                'points': tfds.features.Tensor(shape=(None, 2), dtype=tf.float32, encoding='zlib'),
             }),
         }),
         # If there's a common (input, target) tuple from the
@@ -60,16 +61,15 @@ class ContainerDataset(tfds.core.GeneratorBasedBuilder):
 
   def _generate_examples(self, path):
     """Yields examples."""
-    print (path)
     # TODO(container_dataset): Yields (key, example) tuples from the dataset
-    for file in path.glob("*.jpg"):
-      json_path = os.path.join(path,(os.path.splitext(file.name)[0]+".json"))
-      yield list(path.glob("*.jpg")).index(file.name),{
-        'image': file,
-        'objects': self._get_objects(json_path)
+    for i, (img, json) in enumerate(zip(path.glob('*.jpg'), path.glob('*.json'))):
+      yield i,{
+        'image': img,
+        'objects': self._get_objects(json)
       }
 
   def _get_objects(self, json_path):
+    print (json_path)
     """"Returns the json content of each image as an array"""
     data = dict()
     points = self._get_points(json_path)
@@ -85,13 +85,12 @@ class ContainerDataset(tfds.core.GeneratorBasedBuilder):
     train_labels = []
 
     file = open(path) ## Open the file
-    file = json.load(file) ## Load the json and save as file
-    
-    for shape in file["shapes"]:
+    json_file = json.load(file) ## Load the json and save as file
+    file.close()
+
+    for shape in json_file["shapes"]:
       label = shape["label"] ## Get the label from the json
       train_labels.append(label) ## Add the label to the set
-
-    file.close()
 
     return train_labels
 
@@ -100,15 +99,13 @@ class ContainerDataset(tfds.core.GeneratorBasedBuilder):
 
     array = []
 
-    file = open(os.path.join(path, file)) ## Open the file
-    file = json.load(file) ## Load the json and save as file
-    
-    for shape in file["shapes"]:
-      points = shape["points"] ## Get the label from the json
-      points = tfds.features.Tensor(points, shape=(None, 2), dtype=tf.float32)
-      array.append(points)
-
+    file = open(path) ## Open the file
+    json_file = json.load(file) ## Load the json and save as file
     file.close()
+
+    for shape in json_file["shapes"]:
+      points = shape["points"] ## Get the label from the json
+      array.append(points)
 
     return array
 
