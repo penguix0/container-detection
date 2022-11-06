@@ -1,14 +1,15 @@
 ## Import libaries
-from tkinter import N
 import tensorflow as tf
-
+import tensorflow_datasets as tfds
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
 
 # Helper libraries
-import math
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-import json
+
+# Import the dataset
+import container_dataset
 
 # Setup logging
 import logging
@@ -20,124 +21,84 @@ logger.setLevel(logging.ERROR)
 filename = "main.py"
 data_path = str(__file__).replace(filename, "") + "dataset"
 
-base_dir = os.path.join(data_path)
-train_dir= os.path.join(base_dir, "training")
-validation_dir = os.path.join(base_dir, "testing")
+## Load the dataset
+(train_dataset, val_dataset, test_dataset), metadata = tfds.load("container_dataset", 
+    split=["train[:80%]", "train[80%:]", "test"],
+    with_info=True)
 
-## Count images
-training_image_count = 0
-for file in os.listdir(train_dir):
-    name, ext = os.path.splitext(file)
-    if ext == '.json':
-        training_image_count += 1
-print ("Total training image count: " + str(training_image_count))
+## Print classes which the program can detect
+class_names = metadata.features['objects']["label"].names
+print("Class names: {}".format(class_names))
 
-validation_image_count = 0
-for file in os.listdir(validation_dir):
-    name, ext = os.path.splitext(file)
-    if ext == '.json':
-        validation_image_count += 1
-print ("Total testing image count: " + str(validation_image_count))
+## Print the number of examples in each set
+num_train_examples = metadata.splits['train'].num_examples
+num_test_examples = metadata.splits['test'].num_examples
+print("Number of training examples: {}".format(num_train_examples))
+print("Number of test examples:     {}".format(num_test_examples))
 
-
-## Get all labels from the images and count training point
-def get_labels(dir, extension):
-    train_labels = set() ## Using a set to make sure not duplicates are added
-    for file in os.listdir(dir):
-        name, ext = os.path.splitext(file) ## split the file in a name and extension
-        if ext == extension:
-            file = open(os.path.join(train_dir, file)) ## Open the file
-            file = json.load(file) ## Load the json and save as file
-            
-            label = file["shapes"][0]["label"] ## Get the label from the json
-            train_labels.add(label) ## Add the label to the set
-
-    return train_labels
-
-training_labels = get_labels(train_dir, '.json')
-print (training_labels)
-
-## Image dimensions in pixels
-IMG_WIDTH = 100
-IMG_HEIGHT = 100
-### 3 layers: red, green, blue
+IMG_WIDTH = 100 #pixels
+IMG_HEIGHT = 100 #pixels
 IMG_DEPTH = 3
 
-BATCH_SIZE = 5# Number of training examples to process before updating our models variables
+train_dataset_img = []
+train_dataset_objects = []
+## Prepare all images
+for i in iter(train_dataset):
+    img = i["image"]
+    train_dataset_img.append(img)
+    objects = []
+    for feature in i["objects"]:
+        objects.append(i["objects"][feature])
+    train_dataset_objects.append(objects)
 
-## Prepare all images for training
+test_dataset_img = []
+test_dataset_objects = []
+## Prepare all images
+for i in iter(test_dataset):
+    img = i["image"]
+    test_dataset_img.append(img)
+    objects = []
+    for feature in i["objects"]:
+        objects.append(i["objects"][feature])
 
-def convert_img_to_array(image_file):
-    img = tf.keras.preprocessing.image.load_img(image_file)
-    image_array = tf.keras.preprocessing.image.img_to_array(img)
-    return image_array
+    test_dataset_objects.append(objects)
 
-def convert_all_images_to_one_array(dir, extension):
-    ##array = np.array([])
-    array = []
-    for file in os.listdir(dir):
-        name, ext = os.path.splitext(file) ## split the file in a name and extension
-        if not ext == extension:
-            continue
-        img_array = convert_img_to_array(os.path.join(dir, file))
-        array.append(img_array)
-        ##np.concatenate(array, img_array)
+val_dataset_img = []
+val_dataset_objects = []
+## Prepare all images
+for i in iter(val_dataset):
+    img = i["image"]
+    val_dataset_img.append(img)
+    objects = []
+    for feature in i["objects"]:
+        objects.append(i["objects"][feature])
+    val_dataset_objects.append(objects)
 
-    print ("Conversion of images in " + str(dir) + " succesfull")
-    return array
-        
-##training_image_data = convert_all_images_to_one_array(train_dir, ".jpg")
-training_image_data = tf.keras.utils.image_dataset_from_directory(
-    directory=train_dir,
-    labels=None,
-    class_names=None,
-    color_mode="rgb",
-    batch_size=BATCH_SIZE,
-    image_size=(IMG_HEIGHT, IMG_WIDTH), ##Width and height are flipped for some strange reason
-    shuffle=True
-)
+train_image_generator      = ImageDataGenerator(rescale=1./255)  # Generator for our training data
+test_image_generator       = ImageDataGenerator(rescale=1./255)  # Generator for our test data
+validation_image_generator = ImageDataGenerator(rescale=1./255)  # Generator for our validation data
 
-# for batch in training_image_data:
-#     print (batch.shape)
-#     for image in batch:
-#         print (image.shape)
 
-## Prepare all points for training
-def get_points(dir, extension):
-    array = []
-    for file in os.listdir(dir):
-        name, ext = os.path.splitext(file) ## split the file in a name and extension
-        if not ext == extension:
-            continue
+BATCH_SIZE = 5 # Number of training examples to process before updating our models variables
 
-        file = open(os.path.join(dir, file)) ## Open the file
-        file = json.load(file) ## Load the json and save as file
-        
-        label = file["shapes"][0]["points"] ## Get the label from the json
-        array.append(label)
+print (train_dataset_objects)
 
-    return array
 
-training_point_data = get_points(train_dir, ".json")
+train_data_gen = train_image_generator.flow(x=np.asarray(train_dataset_img).astype('float64'),
+                                            y=train_dataset_objects,
+                                            batch_size=BATCH_SIZE,
+                                            shuffle=True)
 
-print (len(training_image_data))
-print (len(training_point_data))
+test_data_gen = validation_image_generator.flow(x=np.asarray(test_dataset_img).astype('float64'),
+                                               y=test_dataset_objects,
+                                               batch_size=BATCH_SIZE,
+                                               shuffle=False)
 
-# if len(training_image_data) != len(training_point_data):
-#     print ("Images don't match, point count, quitting!")
-#     quit()
+val_data_gen = validation_image_generator.flow(x=np.asarray(val_dataset_img).astype('float64'),
+                                               y=val_dataset_objects,
+                                               batch_size=BATCH_SIZE,
+                                               shuffle=False)
 
-validation_image_data = tf.keras.utils.image_dataset_from_directory(
-    directory=validation_dir,
-    labels=None,
-    class_names=None,
-    color_mode="rgb",
-    batch_size=BATCH_SIZE,
-    image_size=(IMG_HEIGHT, IMG_WIDTH), ##Width and height are flipped for some strange reason
-    shuffle=True
-)
-
-validation_point_data = get_points(validation_dir, ".json")
 
 model = tf.keras.models.Sequential([
     tf.keras.layers.Conv2D(32, (3,3), activation='relu', input_shape=(IMG_WIDTH, IMG_HEIGHT, IMG_DEPTH)),
@@ -162,11 +123,9 @@ model.compile(optimizer='adam',
               metrics=['accuracy'])
 
 EPOCHS = 14
+
 history = model.fit(
-    x=training_image_data,
-    y=training_point_data,
-    steps_per_epoch=int(np.ceil(len(training_image_data) / float(BATCH_SIZE))),
+    tf.convert_to_tensor(train_data_gen),
+    steps_per_epoch=int(np.ceil(len(train_dataset_img) / float(BATCH_SIZE))),
     epochs=EPOCHS,
-    ##validation_split=0.2
-    validation_data=(validation_image_data),
 )

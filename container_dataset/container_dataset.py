@@ -13,6 +13,9 @@ Description
 _CITATION = """
 """
 
+IMG_HEIGHT = 100
+IMG_WIDTH = 100
+IMG_DEPTH = 3
 
 class ContainerDataset(tfds.core.GeneratorBasedBuilder):
   """DatasetBuilder for container_dataset dataset."""
@@ -25,8 +28,7 @@ class ContainerDataset(tfds.core.GeneratorBasedBuilder):
 
   def _info(self) -> tfds.core.DatasetInfo:
     """Returns the dataset metadata."""  
-    IMG_HEIGHT = 100 # pixels
-    IMG_WIDTH = 100 # pixels
+
     # TODO(container_dataset): Specifies the tfds.core.DatasetInfo object
     return tfds.core.DatasetInfo(
         builder=self,
@@ -34,12 +36,11 @@ class ContainerDataset(tfds.core.GeneratorBasedBuilder):
         features=tfds.features.FeaturesDict({
             # These are the features of your dataset like images, labels ...
             ## shape=(height, width, num. of channels)
-            'image': tfds.features.Image(shape=(IMG_HEIGHT, IMG_WIDTH, 3)),
+            'image': tfds.features.Image(shape=(IMG_HEIGHT, IMG_WIDTH, IMG_DEPTH), encoding_format="jpeg"),
             'objects': tfds.features.Sequence({
                 'label': tfds.features.ClassLabel(names=['container_front']),
                 ## shape=(number points in polygon, 2--> x and y value)
-                'points': tfds.features.Tensor(shape=(None, 2), dtype=tf.float32, encoding='zlib'),
-            }),
+                'points': tfds.features.Tensor(shape=(None, 2), dtype=tf.float64, encoding='zlib')            }),
         }),
         # If there's a common (input, target) tuple from the
         # features, specify them here. They'll be used if
@@ -52,7 +53,7 @@ class ContainerDataset(tfds.core.GeneratorBasedBuilder):
   def _split_generators(self, dl_manager: tfds.download.DownloadManager):
     """Returns SplitGenerators."""
     # TODO(container_dataset): Downloads the data and defines the splits
-    path = dl_manager.extract(dl_manager.download('https://github.com/penguix0/container-detection-dataset/archive/refs/heads/main.zip'))
+    path = dl_manager.download_and_extract('https://github.com/penguix0/container-detection-dataset/archive/refs/heads/main.zip')
     # TODO(container_dataset): Returns the Dict[split names, Iterator[Key, Example]]
     return {
         'train': self._generate_examples(path / 'container-detection-dataset-main' / 'training'),
@@ -90,7 +91,7 @@ class ContainerDataset(tfds.core.GeneratorBasedBuilder):
 
     for shape in json_file["shapes"]:
       label = shape["label"] ## Get the label from the json
-      train_labels.append(label) ## Add the label to the set
+      train_labels.append(str(label)) ## Add the label to the set
 
     return train_labels
 
