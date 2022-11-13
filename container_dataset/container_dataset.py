@@ -37,7 +37,7 @@ class ContainerDataset(tfds.core.GeneratorBasedBuilder):
             # These are the features of your dataset like images, labels ...
             ## shape=(height, width, num. of channels)
             'image': tfds.features.Image(shape=(IMG_HEIGHT, IMG_WIDTH, IMG_DEPTH), encoding_format="jpeg"),
-            'label': tfds.features.ClassLabel(names=['container_front']),
+            'label': tfds.features.ClassLabel(names=['none', 'container_front']),
             ## shape=(number points in polygon, 2--> x and y value)
             'points': tfds.features.Tensor(shape=(None, 2), dtype=tf.float32, encoding='zlib'),
         }),
