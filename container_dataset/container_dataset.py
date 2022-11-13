@@ -37,15 +37,14 @@ class ContainerDataset(tfds.core.GeneratorBasedBuilder):
             # These are the features of your dataset like images, labels ...
             ## shape=(height, width, num. of channels)
             'image': tfds.features.Image(shape=(IMG_HEIGHT, IMG_WIDTH, IMG_DEPTH), encoding_format="jpeg"),
-            'objects': tfds.features.Sequence({
-                'label': tfds.features.ClassLabel(names=['container_front']),
-                ## shape=(number points in polygon, 2--> x and y value)
-                'points': tfds.features.Tensor(shape=(None, 2), dtype=tf.float64, encoding='zlib')            }),
+            'label': tfds.features.ClassLabel(names=['container_front']),
+            ## shape=(number points in polygon, 2--> x and y value)
+            'points': tfds.features.Tensor(shape=(None, 2), dtype=tf.float32, encoding='zlib'),
         }),
         # If there's a common (input, target) tuple from the
         # features, specify them here. They'll be used if
         # `as_supervised=True` in `builder.as_dataset`.
-        supervised_keys=('image', 'objects'),  # Set to `None` to disable
+        supervised_keys=('image', ('label', 'points')),  # Set to `None` to disable
         homepage='https://dataset-homepage/',
         citation=_CITATION,
     )
@@ -66,7 +65,8 @@ class ContainerDataset(tfds.core.GeneratorBasedBuilder):
     for i, (img, json) in enumerate(zip(path.glob('*.jpg'), path.glob('*.json'))):
       yield i,{
         'image': img,
-        'objects': self._get_objects(json)
+        'label': self._get_labels(json),
+        'point': self._get_points(json)
       }
 
   def _get_objects(self, json_path):

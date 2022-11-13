@@ -16,14 +16,9 @@ import logging
 logger = tf.get_logger()
 logger.setLevel(logging.ERROR)
 
-
-## Import the dataset
-filename = "main.py"
-data_path = str(__file__).replace(filename, "") + "dataset"
-
 ## Load the dataset
 (train_dataset, val_dataset, test_dataset), metadata = tfds.load("container_dataset", 
-    split=["train[:80%]", "train[80%:]", "test"],
+    split=["train[:80%]", "train[80%:]", "test"], 
     with_info=True)
 
 ## Print classes which the program can detect
@@ -44,12 +39,19 @@ train_dataset_img = []
 train_dataset_objects = []
 ## Prepare all images
 for i in iter(train_dataset):
+    # Add the image to the array
     img = i["image"]
     train_dataset_img.append(img)
+
+    # Get all objects and add those to their corresponding array
     objects = []
     for feature in i["objects"]:
         objects.append(i["objects"][feature])
     train_dataset_objects.append(objects)
+
+## Convert to numpy array
+train_dataset_img = np.array(train_dataset_img, dtype="float32")
+train_dataset_objects = np.array(train_dataset_objects, dtype="object")
 
 test_dataset_img = []
 test_dataset_objects = []
@@ -62,6 +64,9 @@ for i in iter(test_dataset):
         objects.append(i["objects"][feature])
 
     test_dataset_objects.append(objects)
+## Convert to numpy array
+test_dataset_img = np.array(test_dataset_img, dtype="float32")
+test_dataset_objects = np.array(test_dataset_objects, dtype="object")
 
 val_dataset_img = []
 val_dataset_objects = []
@@ -73,6 +78,10 @@ for i in iter(val_dataset):
     for feature in i["objects"]:
         objects.append(i["objects"][feature])
     val_dataset_objects.append(objects)
+## Convert to numpy array
+val_dataset_img = np.array(val_dataset_img, dtype="float32")
+val_dataset_objects = np.array(val_dataset_objects, dtype="object")
+
 
 train_image_generator      = ImageDataGenerator(rescale=1./255)  # Generator for our training data
 test_image_generator       = ImageDataGenerator(rescale=1./255)  # Generator for our test data
@@ -81,24 +90,23 @@ validation_image_generator = ImageDataGenerator(rescale=1./255)  # Generator for
 
 BATCH_SIZE = 5 # Number of training examples to process before updating our models variables
 
-print (train_dataset_objects)
 
-
-train_data_gen = train_image_generator.flow(x=np.asarray(train_dataset_img).astype('float64'),
+train_data_gen = train_image_generator.flow(x=train_dataset_img,
                                             y=train_dataset_objects,
                                             batch_size=BATCH_SIZE,
                                             shuffle=True)
 
-test_data_gen = validation_image_generator.flow(x=np.asarray(test_dataset_img).astype('float64'),
+test_data_gen = validation_image_generator.flow(x=test_dataset_img,
                                                y=test_dataset_objects,
                                                batch_size=BATCH_SIZE,
                                                shuffle=False)
 
-val_data_gen = validation_image_generator.flow(x=np.asarray(val_dataset_img).astype('float64'),
+val_data_gen = validation_image_generator.flow(x=val_dataset_img,
                                                y=val_dataset_objects,
                                                batch_size=BATCH_SIZE,
                                                shuffle=False)
 
+quit()
 
 model = tf.keras.models.Sequential([
     tf.keras.layers.Conv2D(32, (3,3), activation='relu', input_shape=(IMG_WIDTH, IMG_HEIGHT, IMG_DEPTH)),
