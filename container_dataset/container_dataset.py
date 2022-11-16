@@ -38,8 +38,10 @@ class ContainerDataset(tfds.core.GeneratorBasedBuilder):
             ## shape=(height, width, num. of channels)
             'image': tfds.features.Image(shape=(IMG_HEIGHT, IMG_WIDTH, IMG_DEPTH), encoding_format="jpeg"),
             'label': tfds.features.ClassLabel(names=['none', 'container_front']),
-            ## shape=(number points in polygon, 2--> x and y value)
-            'points': tfds.features.Tensor(shape=(4, 2), dtype=tf.float32, encoding='zlib'),
+            ## shape=(16) janky ass fix
+            ## 4, 2 didn't work in training because I couldn't get the layer in the right shape again
+            ## So I did 2 to the power of 4 and that's 16.
+            'points': tfds.features.Tensor(shape=(8,), dtype=tf.float32, encoding='zlib'),
         }),
         # If there's a common (input, target) tuple from the
         # features, specify them here. They'll be used if
@@ -91,9 +93,7 @@ class ContainerDataset(tfds.core.GeneratorBasedBuilder):
 
     for shape in json_file["shapes"]:
       label = shape["label"] ## Get the label from the json
-      train_labels.append(str(label)) ## Add the label to the set
-
-    return train_labels[0]
+      return str(label)
 
   def _get_points(self, path):
     """Returns all polygon points"""
@@ -106,8 +106,10 @@ class ContainerDataset(tfds.core.GeneratorBasedBuilder):
 
     for shape in json_file["shapes"]:
       points = shape["points"] ## Get the label from the json
-      array.append(points)
-
+      for pair in points:
+        for value in pair:
+          array.append(value)
+              
     return array
 
 
