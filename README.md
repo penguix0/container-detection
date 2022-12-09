@@ -17,6 +17,7 @@
   <a href="#license">License</a>
 </p>
 A cross-platform app built with flutter to detect containers and store the information about the container digitally.
+<br>
 
 <div align="center">
  <img src="https://github.com/penguix0/container-detection/blob/main/README/example.png?raw=true">
