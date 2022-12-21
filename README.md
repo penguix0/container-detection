@@ -30,8 +30,6 @@ A cross-platform app built with flutter to detect containers and store the infor
 
 # Key features
 
-* LivePreview 
-    - See in an instant which containers are detected.
 * Advanced container number detection
     - Container identification is always checked to ensure the container is valid.
 * Dark/Light mode (soon available)
